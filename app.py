@@ -15,8 +15,8 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
             # Insert
             text_page = page.insert_text(position, data[i][0], fontname="helv", fontsize=font_size)
             if data[i][1] != '1':
-                position = (170, 75)
-                text_page = page.insert_text(position, data[i][1], fontname="helv", fontsize=28)
+                position = (160, 75)
+                text_page = page.insert_text(position, data[i][1], fontname="helv", fontsize=40)
         # Save the changes
         pdf_document.save(output_pdf_path)
 
@@ -58,7 +58,7 @@ def compare_with_excel(excel_dict, values):
             if x in keys:
                 numbers.append(excel_dict[x])
             else:
-                numbers.append("")
+                numbers.append(["", ""])
             numbers[-1][0] = numbers[-1][0].replace('-FX', '')
     except Exception as ex:
         print("There is some error occurred during processing...")
