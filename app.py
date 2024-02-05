@@ -11,7 +11,7 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
         for i in range(pdf_document.page_count):
             page = pdf_document[i]
             # Define the position for top-left corner (in points)
-            position = (10, 155)
+            position = (10, 170)
             # Insert
             text_page = page.insert_text(position, data[i][0], fontname="helv", fontsize=font_size)
             if data[i][1] != '1':
