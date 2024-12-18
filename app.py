@@ -1,27 +1,56 @@
-import fitz  # PyMuPDF
+import fitz
 import csv
 import os
 import re
+from reportlab.pdfgen import canvas
+from PyPDF2 import PdfReader, PdfWriter
+import io
+
+mode = '0'
 
 
 def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
     try:
-        # Open the PDF file
-        pdf_document = fitz.open(input_pdf_path)
-        for i in range(pdf_document.page_count):
-            page = pdf_document[i]
-            # Define the position for top-left corner (in points)
-            position = (10, 170)
-            # Insert
-            text_page = page.insert_text(position, data[i][0], fontname="helv", fontsize=font_size)
-            if data[i][1] != '1':
-                position = (160, 75)
-                text_page = page.insert_text(position, data[i][1], fontname="helv", fontsize=40)
-        # Save the changes
-        pdf_document.save(output_pdf_path)
+        # Read the existing PDF
+        reader = PdfReader(input_pdf_path)
+        writer = PdfWriter()
 
-        # Close the PDF document
-        pdf_document.close()
+        for i, page in enumerate(reader.pages):
+            # Create a canvas for the overlay
+            packet = io.BytesIO()
+            c = canvas.Canvas(packet)
+
+            # Add text based on data
+            if data[i][2] == 0:
+                c.setFont("Helvetica", font_size)
+                c.drawString(10, 260, data[i][0])
+
+                if data[i][1] != '1':
+                    c.setFont("Helvetica", 40)
+                    c.drawString(170, 340, data[i][1])
+            else:
+                global mode
+                c.setFont("Helvetica", 12)
+                if mode == "1":
+                    c.drawString(20, 113, data[i][0])
+                else:
+                    c.drawString(20, 113, "")
+
+                if data[i][1] != '1':
+                    c.setFont("Helvetica", 40)
+                    c.drawString(220, 30, data[i][1])
+
+            c.save()
+
+            # Merge the overlay with the existing page
+            packet.seek(0)
+            overlay_pdf = PdfReader(packet)
+            page.merge_page(overlay_pdf.pages[0])
+            writer.add_page(page)
+
+        # Write to the output file
+        with open(output_pdf_path, "wb") as output_file:
+            writer.write(output_file)
 
         print("\nProcess completed successfully...")
     except Exception as ex:
@@ -33,16 +62,19 @@ def read_excel(input_csv_path):
     column_values = {}
     try:
         # Open the CSV file
-        with open(input_csv_path, 'r', newline='') as csv_file:
+        with open(input_csv_path, 'r', newline='', errors='ignore') as csv_file:
             csv_reader = csv.DictReader(csv_file)
 
             for row in csv_reader:
-                value_t = row['quantity-purchased']
-                value_k = row['reference2']
-                value_n = row['Order Quantity']
+                try:
+                    value_t = row['quantity-purchased']
+                    value_k = row['reference2']
+                    value_n = row['Order Quantity']
 
-                # Store values in the dictionary
-                column_values[value_t] = [value_k, value_n]
+                    # Store values in the dictionary
+                    column_values[value_t] = [value_k, value_n]
+                except:
+                    pass
     except Exception as ex:
         print("There is some error occurred during processing...")
         print(ex)
@@ -54,12 +86,15 @@ def compare_with_excel(excel_dict, values):
     numbers = []
     try:
         keys = excel_dict.keys()
-        for x in values:
+        for i in range(len(values[0])):
+            x = values[0][i]
             if x in keys:
                 numbers.append(excel_dict[x])
             else:
                 numbers.append(["", ""])
-            numbers[-1][0] = numbers[-1][0].replace('-FX', '')
+            if values[1][i] == 0:
+                numbers[-1][0] = numbers[-1][0].replace('-FX', '')
+            numbers[-1] += [values[1][i]]
     except Exception as ex:
         print("There is some error occurred during processing...")
         print(ex)
@@ -68,7 +103,7 @@ def compare_with_excel(excel_dict, values):
 
 
 def ocr_file(pdf_path):
-    values = []
+    values = [[], []]
     try:
         # Open the PDF file
         pdf_document = fitz.open(pdf_path)
@@ -88,11 +123,20 @@ def ocr_file(pdf_path):
                     if match:
                         val = match.group(1).strip()
                         val = val.replace('-', '')
-                        values.append(val)
+                        values[0].append(val)
+                        values[1].append(0)
                 else:
-                    values.append("")
-            except:
-                values.append("")
+                    pattern = r'Customer Ref:\s*(\d+)\s*/\s*([0-9A-Za-z-]+)'
+                    match = re.search(pattern, text)
+                    if match:
+                        values[0].append(match.group(2).strip())
+                        values[1].append(1)
+                    else:
+                        values[0].append("")
+                        values[1].append(0)
+            except Exception as ex:
+                values[0].append("")
+                values[1].append(0)
                 pass
         pdf_document.close()
     except Exception as ex:
@@ -102,37 +146,57 @@ def ocr_file(pdf_path):
         return values
 
 
+def read_mode_file(file_path):
+    try:
+        with open(file_path, "r") as file:
+            first_char = file.read(1)  # Read the first character only
+            if first_char in ('0', '1'):
+                return first_char
+            else:
+                print("Invalid content in file. Expected '0' or '1'.")
+                return None
+    except FileNotFoundError:
+        print(f"File '{file_path}' not found.")
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
 def main():
     try:
-        input_pdf = "input.pdf"
-        output_pdf = "output.pdf"
-        excel_path = "input.csv"    # Replace with the path to your Excel file
-        # Check if the file exists
-        if not os.path.exists(input_pdf):
-            print(f"The file '{input_pdf}' does not exist in the current folder.")
-            return
-        if not os.path.exists(excel_path):
-            print(f"The file '{excel_path}' does not exist in the current folder.")
-            return
+        mode1 = read_mode_file(file_path="mode.txt")
+        if mode1 is not None:
+            global mode
+            mode = mode1
+            input_pdf = "input.pdf"
+            output_pdf = "output.pdf"
+            excel_path = "input.csv"    # Replace with the path to your Excel file
+            # Check if the file exists
+            if not os.path.exists(input_pdf):
+                print(f"The file '{input_pdf}' does not exist in the current folder.")
+                return
+            if not os.path.exists(excel_path):
+                print(f"The file '{excel_path}' does not exist in the current folder.")
+                return
 
-        # Get values from columns T and K as a dictionary
-        result_dict = read_excel(excel_path)
-        if not result_dict:
-            print("No data found in column T and K in csv file")
-            return
+            # Get values from columns T and K as a dictionary
+            result_dict = read_excel(excel_path)
+            if not result_dict:
+                print("No data found in respective columns in csv file")
+                return
 
-        values = ocr_file(input_pdf)
-        if not result_dict:
-            print("No label number found in the pdf file")
-            return
+            values = ocr_file(input_pdf)
+            if not result_dict:
+                print("No label number found in the pdf file")
+                return
 
-        data = compare_with_excel(result_dict, values)
-        if not result_dict:
-            print("No corresponding data found in csv file")
-            return
+            data = compare_with_excel(result_dict, values)
+            if not result_dict:
+                print("No corresponding data found in csv file")
+                return
 
-        add_text_to_pdf(input_pdf, output_pdf, data)
-
+            add_text_to_pdf(input_pdf, output_pdf, data)
     except Exception as ex:
         print("There is some error occurred during processing...")
         print(ex)
