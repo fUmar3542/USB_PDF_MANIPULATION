@@ -29,8 +29,14 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
                 c.drawString(10, 260, data[i][0])
 
                 if data[i][1] != '1':
-                    c.setFont("Helvetica", 40)
-                    c.drawString(170, 340, data[i][1])
+                    # c.setFont("Helvetica", 40)
+                    # c.drawString(170, 340, data[i][1])
+                    font_s = 28
+                    c.setFont("Helvetica", font_s)
+                    text_width = c.stringWidth("1M+2+1M", "Helvetica", font_s)  # Calculate the text width
+                    fixed_x = 280  # Right-aligned position
+                    left_aligned_x = fixed_x - text_width  # Adjusted starting point for leftward growth
+                    c.drawString(left_aligned_x, 340, "1M+2+1M")  # Draw the text
             else:
                 global mode
                 c.setFont("Helvetica", 12)
@@ -93,8 +99,7 @@ def compare_with_excel(excel_dict, values):
                 numbers.append(excel_dict[x])
             else:
                 numbers.append(["", ""])
-            if values[1][i] == 0:
-                numbers[-1][0] = numbers[-1][0].replace('-FX', '')
+            numbers[-1][0] = numbers[-1][0].replace('-FX', '')
             numbers[-1] += [values[1][i]]
     except Exception as ex:
         log_error(ex)
