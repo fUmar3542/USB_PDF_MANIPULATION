@@ -41,7 +41,10 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
 
                 if data[i][1] != '1':
                     c.setFont("Helvetica", 40)
-                    c.drawString(220, 30, data[i][1])
+                    text_width = c.stringWidth(data[i][1], "Helvetica", 40)  # Calculate the text width
+                    fixed_x = 265  # Right-aligned position
+                    left_aligned_x = fixed_x - text_width  # Adjusted starting point for leftward growth
+                    c.drawString(left_aligned_x, 30, data[i][1])  # Draw the text
 
             c.save()
 
