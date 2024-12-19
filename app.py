@@ -29,19 +29,21 @@ def add_text_to_pdf(input_pdf_path, output_pdf_path, data, font_size=15):
                 c.drawString(10, 260, data[i][0])
 
                 if data[i][1] != '1':
-                    # c.setFont("Helvetica", 40)
-                    # c.drawString(170, 340, data[i][1])
                     font_s = 28
                     c.setFont("Helvetica", font_s)
                     text_width = c.stringWidth(data[i][1], "Helvetica", font_s)  # Calculate the text width
-                    fixed_x = 280  # Right-aligned position
-                    left_aligned_x = fixed_x - text_width  # Adjusted starting point for leftward growth
-                    c.drawString(left_aligned_x, 340, data[i][1])  # Draw the text
+                    center_x = 215  # The x-coordinate of the center of the desired area
+                    center_aligned_x = center_x - (text_width / 2)  # Calculate starting x-coordinate for center alignment
+                    c.drawString(center_aligned_x, 345, data[i][1])  # Draw the text
             else:
                 global mode
-                c.setFont("Helvetica", 12)
+                font_s = 12
+                c.setFont("Helvetica", font_s)
                 if mode == "1":
-                    c.drawString(20, 113, data[i][0])
+                    text_width = c.stringWidth(data[i][0], "Helvetica", font_s)  # Calculate the text width
+                    center_x = 143  # The x-coordinate of the center of the desired area
+                    center_aligned_x = center_x - (text_width / 2)  # Calculate starting x-coordinate for center alignment
+                    c.drawString(center_aligned_x, 113, data[i][0])  # Draw the text
                 else:
                     c.drawString(20, 113, "")
 
